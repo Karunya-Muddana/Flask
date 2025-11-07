@@ -1,0 +1,7 @@
+Flask
+flask-cors
+google-genai
+requests
+wikipedia
+trafilatura
+gunicorn
