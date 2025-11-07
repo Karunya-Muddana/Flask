@@ -5,13 +5,18 @@ from google import genai
 from google.genai import types
 from tools import google_search, wiki_search, fetch_page_content
 import os
+from dotenv import load_dotenv
+load_dotenv()
+
 
 app = Flask(__name__)
 CORS(app)
 
 # === Gemini Setup ===
-GEMINI_API_KEY = os.getenv("GOOGLE_GEMINI_API_KEY", "your_gemini_key")
+GEMINI_API_KEY = os.getenv("GOOGLE_GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY)
+print("Gemini key:", GEMINI_API_KEY)
+
 
 tools = [
     types.Tool(function_declarations=[

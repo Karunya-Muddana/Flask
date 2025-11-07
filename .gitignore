@@ -1,0 +1,13 @@
+# Environment & credentials
+.env
+token.json
+client_secrets.json
+
+# Python junk
+venv/
+__pycache__/
+*.pyc
+instance/
+
+# VSCode
+.vscode/
