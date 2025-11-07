@@ -6,8 +6,8 @@ from google.genai import types
 from tools import google_search, wiki_search, fetch_page_content
 import os
 from dotenv import load_dotenv
-load_dotenv()
 
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
@@ -15,9 +15,9 @@ CORS(app)
 # === Gemini Setup ===
 GEMINI_API_KEY = os.getenv("GOOGLE_GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY)
-print("Gemini key:", GEMINI_API_KEY)
+print("Gemini key loaded ✅")
 
-
+# === Tool Definitions ===
 tools = [
     types.Tool(function_declarations=[
         types.FunctionDeclaration(
@@ -39,6 +39,14 @@ tools = [
 ]
 config = types.GenerateContentConfig(tools=tools)
 
+# === Persona Conditioning ===
+KARUNYA_PERSONA = """
+You are an AI assistant representing **Karunya Muddana**, a male Backend & AI Developer from Hyderabad, India.
+He is a Computer Science student (CGPA 9.07) focused on Artificial Intelligence, MLOps, and Full-Stack Development.
+Never use feminine pronouns. Always refer to Karunya as "he" or "him" when needed.
+Respond professionally, factually, and with a calm, intelligent tone — similar to an AI engineer explaining his own work.
+"""
+
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
@@ -47,14 +55,20 @@ def chat():
         return jsonify({"error": "No message provided"}), 400
 
     try:
-        history = [types.Content(role="user", parts=[types.Part(text=message)])]
+        # Combine persona + user message
+        combined_prompt = f"{KARUNYA_PERSONA}\n\nUser query: {message}"
+
+        history = [
+            types.Content(role="user", parts=[types.Part(text=combined_prompt)])
+        ]
+
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=history,
             config=config
         )
 
-        # Handle tool calls
+        # === Tool Call Handling ===
         while response.function_calls:
             tool_outputs = []
             for call in response.function_calls:
@@ -73,7 +87,10 @@ def chat():
                     result = f"Error executing {func_name}: {e}"
 
                 tool_outputs.append(
-                    types.Part(function_response=types.FunctionResponse(name=func_name, response={"content": result}))
+                    types.Part(function_response=types.FunctionResponse(
+                        name=func_name,
+                        response={"content": result}
+                    ))
                 )
 
             history.append(types.Content(role="tool", parts=tool_outputs))
@@ -83,18 +100,23 @@ def chat():
                 config=config
             )
 
+        # === Extract Text ===
         final_text = ""
         for part in response.candidates[0].content.parts:
             if hasattr(part, "text"):
                 final_text += part.text
+
         return jsonify({"response": final_text.strip()})
 
     except Exception as e:
+        print(f"Error during chat processing: {e}")
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"message": "Karunya AI Agent with Gemini Tools is live."})
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
