@@ -7,3 +7,4 @@ trafilatura
 gunicorn
 python-dotenv
 google
+flask-limiter
